@@ -1,4 +1,3 @@
-#!/bin/bash
 import os
 from customtkinter import *
 import dns.resolver
