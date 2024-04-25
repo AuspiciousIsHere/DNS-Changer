@@ -4,3 +4,11 @@ i Tested the program on Linux Mint and it worked just fine.
 the program works by using shell commands in subprocess module of python!
 for using this DNS Changer on Windows you need to exclude the program's file from your Anti-Virus and run it as administrator. also dont forget to have internet connection.
 on Linux on the other hand you dont need to do much. just run the program as sudo and be connected to an internet.
+
+dependencies:
+  python3
+  customtkinter
+  ctypes
+  dns.resolver
+
+you can install the dependencies by using pip!
