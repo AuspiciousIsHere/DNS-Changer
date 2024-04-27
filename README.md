@@ -8,7 +8,7 @@ on Linux on the other hand you dont need to do much. just run the program as sud
 dependencies:
   python3
   customtkinter
-  ctypes
-  dns.resolver
+  pywin32-ctypes
+  dnspython
 
 you can install the dependencies by using pip!
