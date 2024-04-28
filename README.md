@@ -6,10 +6,13 @@ for using this DNS Changer on Windows you need to exclude the program's file fro
 on Linux on the other hand you dont need to do much. just run the program as sudo and be connected to an internet.
 
 dependencies:
-  python3
-  customtkinter
-  pywin32-ctypes
-  dnspython
-  tk
 
-you can install the dependencies by using pip!
+  python3
+  
+  sudo pip install customtkinter
+  
+  sudo pip install pywin32-ctypes
+  
+  sudo pip install dnspython
+  
+  sudo apt-get install python3-tk
