@@ -10,5 +10,6 @@ dependencies:
   customtkinter
   pywin32-ctypes
   dnspython
+  tk
 
 you can install the dependencies by using pip!
