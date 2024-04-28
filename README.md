@@ -9,6 +9,8 @@ dependencies:
 
   python3
   
+  Linux:
+  
   sudo pip install customtkinter
   
   sudo pip install pywin32-ctypes
@@ -16,3 +18,13 @@ dependencies:
   sudo pip install dnspython
   
   sudo apt-get install python3-tk
+
+  Windows:
+
+  pip install customtkinter
+  
+  pip install pywin32-ctypes
+  
+  pip install dnspython
+  
+  pip install tk
