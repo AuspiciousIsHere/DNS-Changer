@@ -5,6 +5,21 @@ the program works by using shell commands in subprocess module of python!
 for using this DNS Changer on Windows you need to run it as administrator. also dont forget to have internet connection.
 on Linux, just run the program as sudo and be connected to an internet.
 
+Linux users should note that:
+
+    everytime the DNS changes, the program restarts your network to apply the changes. so after every change in your DNS, just wait for your internet to get connected again which takes about 1 or 2 seconds depending on your network.
+    if you get any error after changing the DNS, it might be due to not having internet connection as i mentioned above! just wait for the connection.
+  
+on Linux run the program by using the following command in terminal:
+
+in release builds:
+
+    sudo ./Auspicious_DNS_Changer 
+
+while running the source code:
+
+    sudo python3 Auspicious_DNS_Changer.py
+
 dependencies:
 
   python3
