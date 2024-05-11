@@ -11,20 +11,27 @@ dependencies:
   
   Linux:
   
-  sudo pip install customtkinter
+  debain based distros:
   
-  sudo pip install pywin32-ctypes
+    sudo pip install customtkinter
   
-  sudo pip install dnspython
+    sudo pip install pywin32-ctypes
   
-  sudo apt-get install python3-tk
+    sudo pip install dnspython
+  
+    sudo apt-get install python3-tk
+    
+  arch based distros:
+  
+    clone the repository of customtkinter and build it
+    for other packages just simply use: sudo pip install + <package name>
 
   Windows:
 
-  pip install customtkinter
+    pip install customtkinter
   
-  pip install pywin32-ctypes
+    pip install pywin32-ctypes
   
-  pip install dnspython
+    pip install dnspython
   
-  pip install tk
+    pip install tk

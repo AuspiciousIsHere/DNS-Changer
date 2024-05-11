@@ -103,8 +103,8 @@ def DefaultDNS():
         os.system('netsh interface ip set dnsservers name="Wi-Fi" source=dhcp')
     elif OS == 'Linux':
         subprocess.run(["sudo","nmcli", 'connection', 'modify', connected_network(), 'ipv4.dns', '8.8.8.8 1.1.1.1'])
-        subprocess.getstatusoutput("sudo nmcli connection up " + '"' + connected_network() + '"')
-        
+        subprocess.getstatusoutput("sudo nmcli networking off")
+        subprocess.getstatusoutput("sudo nmcli networking on")
 
     top = CTkToplevel(root)
     top.title("Report")
@@ -123,32 +123,28 @@ def SetCustomDNS(DNS1, DNS2):
     if OS == 'Windows':
         status1, output1 = subprocess.getstatusoutput("ping -n 1 " + DNS1)
         status2, output2 = subprocess.getstatusoutput("ping -n 1 " + DNS2)
-    if OS == 'Linux':
-        status1, output1 = subprocess.getstatusoutput("sudo ping -c 1 " + DNS1)
-        status2, output2 = subprocess.getstatusoutput("sudo ping -c 1 " + DNS2)
-
-    if  status1 != 1 and status2 != 1:
-        if OS == 'Windows':
+        if  status1 != 1 and status2 != 1:
             os.system('netsh interface ip set dns "WI-FI" static ' + DNS1)
             os.system('netsh interface ip add dns "WI-FI" ' + DNS2 + ' index = 2')
-        elif OS == 'Linux':
-            temp = DNS1 + " " + DNS2
-            subprocess.run(["sudo","nmcli", 'connection', 'modify', connected_network(), 'ipv4.dns', temp])
-            subprocess.getstatusoutput("sudo nmcli connection up " + '"' + connected_network() + '"')
-
-        top = CTkToplevel(root)
-        top.title("Report")
-        top.focus_force()
-        top.resizable(False, False)
-        top.geometry("400x100")
-        labeltemp = CTkLabel(top, text="DNS Changed!", fg_color = 'orange', width = 40, text_color = "black", font = ('Arial', 14), corner_radius = 8)
-        labeltemp.pack()
-        buttemp = CTkButton(top, text = "OK", fg_color = "light blue", command = top.destroy, text_color = "black", font = ('Arial', 14), corner_radius = 100)
-        buttemp.pack()
-        if OS == 'Windows':
-            Log(logtext, "APPLIED CUSTOM DNS!\n DNS1 PING = " + output1.split('Average =')[1] + "\nDNS2 PING = " + output2.split("Average = ")[1])
-        elif OS == 'Linux':
-            Log(logtext, "APPLIED CUSTOM DNS!\n DNS1 PING = " + output1.split('time=')[1].split('ms')[0] + "\nDNS2 PING = " + output2.split('time=')[1].split('ms')[0])
+    elif OS == 'Linux':
+        temp = DNS1 + " " + DNS2
+        subprocess.run(["sudo","nmcli", 'connection', 'modify', connected_network(), 'ipv4.dns', temp])
+        subprocess.getstatusoutput("sudo nmcli networking off")
+        subprocess.getstatusoutput("sudo nmcli networking on")
+    
+    top = CTkToplevel(root)
+    top.title("Report")
+    top.focus_force()
+    top.resizable(False, False)
+    top.geometry("400x100")
+    labeltemp = CTkLabel(top, text="DNS Changed!", fg_color = 'orange', width = 40, text_color = "black", font = ('Arial', 14), corner_radius = 8)
+    labeltemp.pack()
+    buttemp = CTkButton(top, text = "OK", fg_color = "light blue", command = top.destroy, text_color = "black", font = ('Arial', 14), corner_radius = 100)
+    buttemp.pack()
+    if OS == 'Windows':
+        Log(logtext, "APPLIED CUSTOM DNS!\n DNS1 PING = " + output1.split('Average =')[1] + "\nDNS2 PING = " + output2.split("Average = ")[1])
+    elif OS == 'Linux':
+        Log(logtext, "APPLIED CUSTOM DNS!")
     else:
         if OS == 'Windows':
             os.system('netsh interface ip set dnsservers name="Wi-Fi" source=dhcp')
@@ -172,12 +168,13 @@ def SetSpotifyDNS(temp):
     if OS == 'Windows':
         os.system('netsh interface ip set dns "WI-FI" static 10.202.10.11')
         output = subprocess.getstatusoutput("ping -n 1 10.202.10.11")[1]
+        print(output)
         Log(logtext, "SPOTIFY DNS ACTIVATED!\n PING = " + output.split('Average =')[1])
     elif OS == 'Linux':
         subprocess.run(["sudo","nmcli", 'con', 'mod', connected_network(), 'ipv4.dns', "10.202.10.11"])
-        subprocess.getstatusoutput("sudo nmcli connection up " + '"' + connected_network() + '"')
-        output = subprocess.getstatusoutput("sudo ping -c 1 -W 10 10.202.10.11")[1]
-        Log(logtext, "SPOTIFY DNS ACTIVATED!\n PING = " + output.split('time=')[1].split('ms')[0])
+        subprocess.getstatusoutput("sudo nmcli networking off")
+        subprocess.getstatusoutput("sudo nmcli networking on")
+        Log(logtext, "SPOTIFY DNS ACTIVATED!")
     temp.configure(text = "ACTIVE")
     AntiDNSStatus(label7)
 
@@ -190,10 +187,9 @@ def SetAnti(temp):
         Log(logtext, "ANTI-PROHIBITION DNS ACTIVATED!\n DNS1 PING = " + output1.split('Average =')[1] + "\nDNS2 PING = " + output2.split("Average = ")[1])
     if OS == 'Linux':
         subprocess.run(["sudo","nmcli", 'con', 'mod', connected_network(), 'ipv4.dns', '10.202.10.202 10.202.10.102'])
-        subprocess.getstatusoutput("sudo nmcli connection up " + '"' + connected_network() + '"')
-        output2 = subprocess.getstatusoutput("sudo ping -c 1 -W 10 10.202.10.102")[1]
-        output1 = subprocess.getstatusoutput("sudo ping -c 1 -W 10 10.202.10.202")[1]
-        Log(logtext, "ANTI-PROHIBITION DNS ACTIVATED!\n DNS1 PING = " + output1.split('time=')[1].split('ms')[0] + "\nDNS2 PING = " + output2.split('time=')[1].split('ms')[0])
+        subprocess.getstatusoutput("sudo nmcli networking off")
+        subprocess.getstatusoutput("sudo nmcli networking on")
+        Log(logtext, "ANTI-PROHIBITION DNS ACTIVATED!")
     temp.configure(text = "ACTIVE")
     SpotifyDNSStatus(label4)
 
