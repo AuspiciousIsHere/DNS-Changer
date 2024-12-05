@@ -37,9 +37,9 @@ dependencies:
     sudo apt-get install python3-tk
     
   arch based distros:
-  
-    clone the repository of customtkinter and build it
-    for other packages just simply use: sudo pip install + <package name>
+
+    to install tkinter correctly use: sudo pacman -S tk
+    just simply use: sudo pip install + <package name>
 
   Windows:
 
