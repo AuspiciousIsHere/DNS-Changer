@@ -16,7 +16,7 @@ from urllib.request import urlretrieve
 from urllib import error
 
 OS = platform.system()
-
+status = False
 # <editor-fold desc="DNS functions and info">
 
 def MultiT():
@@ -26,9 +26,8 @@ def MultiT():
 
 Number_Of_Tries = 0
 flag = False
+
 # Updating the Temporay DNS/Downloading the Configuration if doesnt exist.
-
-
 def download_file(url):
     global Number_Of_Tries
     Number_Of_Tries += 1
@@ -59,6 +58,7 @@ if OS == "Windows":
 SpotifyDNS = ["10.202.10.11"]
 AntiDNS = ["10.202.10.202", "10.202.10.102"]
 TemporaryDNS =['','']
+items_list = []
 
 def make_request(url):
     try:
@@ -67,6 +67,100 @@ def make_request(url):
     except:
         return None
 
+custom_dns_path = "dns.ini"
+# a flag that tells us this is the first time this function is being called so that the next time, it wont do most of the work
+isinitial = True
+def get_custom_dns():
+    global items_list
+    global isinitial
+    configure = ConfigParser()
+    configure.read(custom_dns_path)
+    if isinitial:
+        file_exist = os.path.isfile(custom_dns_path)
+
+        if not file_exist:
+            open(custom_dns_path, 'x')
+
+        
+        items_list = configure.sections()
+        isinitial = False
+    else:
+        items_list = configure.sections()
+        option_menu.configure(values=items_list)
+
+get_custom_dns()
+
+# a function to save the custom DNS
+def save_custom_dns(prefered, alternative):
+    open(custom_dns_path, 'a')
+    configure = ConfigParser()
+    configure.add_section(str(len(items_list) + 1))
+    items_list.append(str(len(items_list) + 1))
+    if prefered == "" and alternative == "":
+        if app_language == "persian":
+            custom_app_log_text_box.configure(text="!هر دو دی ان اس نمی تواند خالی باشد", font=("Arial Bold", 16))
+        else:
+            custom_app_log_text_box.configure(text="CANT SAVE TWO EMPTY DNSs!")
+        return
+    configure.set(str(len(items_list)), "Address1", prefered)
+    configure.set(str(len(items_list)), "Address2", alternative)
+
+    # Save to files
+    with open(custom_dns_path, 'a') as w_configure:
+        configure.write(w_configure)
+    if app_language == "persian":
+        custom_app_log_text_box.configure(text="!دی ان اس ها ذخیره شدند", font=("Arial Bold", 16))    
+    else:
+        custom_app_log_text_box.configure(text="SAVE COMPLETED!")
+
+# creaitng a function to set the Entries Texts according to the chosen DNS
+def call_back(chosen_option):
+    global preferred_dns_text
+    global alternate_dns_text
+    configure = ConfigParser()
+    configure.read(custom_dns_path)
+    preferred_dns_text.set(configure.get(chosen_option, "Address1"))
+    alternate_dns_text.set(configure.get(chosen_option, "Address2"))
+    
+    preferred_dns_text_box.configure(textvariable = preferred_dns_text)
+    alternate_dns_text_box.configure(textvariable = alternate_dns_text)
+
+def is_connected_to_network():
+    status = subprocess.getstatusoutput("ping -n 1 8.8.8.8")
+    if status[0] == 0 and not status[1].__contains__("unreachable"):
+        return True
+    return False
+
+# Windows App status
+if OS == "Windows":
+    status = is_connected_to_network()
+
+# Update the status
+def update_status():
+    global status
+    while(True):
+        time.sleep(5.0)
+        if OS == "Windows":
+            status = is_connected_to_network()
+        elif OS == "Linux":
+            # on Linux it doesnt matter if you are connected or not connected to a network for the program to work!
+            # it just always works since it doesnt check if a DNS is valid or not!
+            status = True
+        update_status_label(status)
+
+status_thread = threading.Thread(target=update_status, daemon = True)
+status_thread.start()
+
+# Update the status label
+def update_status_label(status):
+    if status == True:
+        status_label_text = "Online"
+        status_label_text_color = "#00896f"
+    else:
+        status_label_text = "Offline"
+        status_label_text_color = "#c34a36"
+
+    status_label.configure(text=status_label_text, text_color=status_label_text_color)
 
 def get_dns_servers():
     if OS == 'Windows':
@@ -96,7 +190,7 @@ def get_current_dns_servers():
 def get_current_dns_servers_ping():
     alldnsserverspings = ''
     if OS == "Windows":
-        if is_connected_to_network():
+        if status:
             temp = get_dns_servers()
             for each in temp:
                 output = subprocess.getstatusoutput(f"ping -n 1 {each}")[1]
@@ -122,7 +216,7 @@ def Get_Ping(DNS1,DNS2):
     status2 = 1
     report = ''
     if OS == 'Windows':
-        if is_connected_to_network():
+        if status:
             if DNS1 != '':
                 status1, output1 = subprocess.getstatusoutput("ping -n 1 " + DNS1)
             if DNS2 != '':
@@ -155,21 +249,23 @@ def Get_Ping(DNS1,DNS2):
 
 if OS == 'Linux':
     subprocess.run(["sudo","nmcli","connection", "modify", connected_network(), "ipv4.ignore-auto-dns", "yes"])
+elif OS == 'Windows':
+      currently_connected_network_adapter = subprocess.getstatusoutput("netsh interface show interface")[1].split("Connected")[1].split("\n")[0].split("        ")[1]
 
 def SetCustomDNS(DNS1, DNS2):
     status1 = 1
     status2 = 1
     if OS == 'Windows':
-        if is_connected_to_network():
+        if status:
             if DNS1 != '':
                 status1 = subprocess.getstatusoutput("ping -n 1 " + DNS1)[0]
             if DNS2 != '':
                 status2 = subprocess.getstatusoutput("ping -n 1 " + DNS2)[0]
             if  DNS1 != '' and status1 != 1:
-                process = subprocess.Popen(f'netsh interface ip set dns "WI-FI" static {DNS1}', creationflags=subprocess.CREATE_NO_WINDOW)
+                process = subprocess.Popen(f'netsh interface ip set dns "{currently_connected_network_adapter}" static {DNS1}', creationflags=subprocess.CREATE_NO_WINDOW)
                 process.wait()
             if DNS2 != '' and status2 != 1:
-                subprocess.Popen(f'netsh interface ip add dns "WI-FI" {DNS2} index = 2', creationflags=subprocess.CREATE_NO_WINDOW)
+                subprocess.Popen(f'netsh interface ip add dns "{currently_connected_network_adapter}" {DNS2} index = 2', creationflags=subprocess.CREATE_NO_WINDOW)
             if (status1 != 1 and status2 != 1) or (status1 != 1 and DNS2 == '') or (status2 != 1 and DNS1 == ''):
                 if app_language == "english":
                     custom_app_log_text_box.configure(text= "Custom DNS Is Set!", font=("Arial", 14))
@@ -191,8 +287,8 @@ def SetCustomDNS(DNS1, DNS2):
 
 def SetSpotifyDNS():
     if OS == 'Windows':
-        if is_connected_to_network():
-            subprocess.Popen(f'netsh interface ip set dns "WI-FI" static {SpotifyDNS[0]}', creationflags=subprocess.CREATE_NO_WINDOW)
+        if status:
+            subprocess.Popen(f'netsh interface ip set dns "{currently_connected_network_adapter}" static {SpotifyDNS[0]}', creationflags=subprocess.CREATE_NO_WINDOW)
             output = subprocess.getstatusoutput(f"ping -n 1 {SpotifyDNS[0]}")[1]
             if app_language == "english":
                 app_log_text_box.configure(text="SPOTIFY DNS ACTIVATED!\n DNS1 PING = " + output.split('Average =')[1], font=("Arial", 14))
@@ -208,7 +304,7 @@ def SetSpotifyDNS():
 
 def DefaultDNS():
     if OS == 'Windows':
-        subprocess.Popen('netsh interface ip set dnsservers name="Wi-Fi" source=dhcp', creationflags=subprocess.CREATE_NO_WINDOW)
+        subprocess.Popen(f'netsh interface ip set dnsservers "{currently_connected_network_adapter}" source=dhcp', creationflags=subprocess.CREATE_NO_WINDOW)
         if app_language == "english":
             other_services_app_log_text_box.configure(text = "DEFAULT DNS IS APPLIED!", font= ("Arial", 14))
         elif app_language == "persian":
@@ -221,10 +317,10 @@ def DefaultDNS():
 
 def SetAnti():
     if OS == 'Windows':
-        if is_connected_to_network():
-            process = subprocess.Popen(f'netsh interface ip set dns "WI-FI" static {AntiDNS[0]}', creationflags=subprocess.CREATE_NO_WINDOW)
+        if status:
+            process = subprocess.Popen(f'netsh interface ip set dns "{currently_connected_network_adapter}" static {AntiDNS[0]}', creationflags=subprocess.CREATE_NO_WINDOW)
             process.wait()
-            subprocess.Popen(f'netsh interface ip add dns "WI-FI" {AntiDNS[1]} index = 2', creationflags=subprocess.CREATE_NO_WINDOW)
+            subprocess.Popen(f'netsh interface ip add dns "{currently_connected_network_adapter}" {AntiDNS[1]} index = 2', creationflags=subprocess.CREATE_NO_WINDOW)
             output1 = subprocess.getstatusoutput("ping -n 1 " + f"{AntiDNS[0]}")[1]
             output2 = subprocess.getstatusoutput("ping -n 1 " + f"{AntiDNS[1]}")[1]
             if app_language == "english":
@@ -241,15 +337,16 @@ def SetAnti():
 def SetTemporary():
     if ignoreflag:
         if app_language == "english":
-            app_log_text_box.configure(text = "THIS DNS IS NOT AVAILABLE FOR YOUR ISP!")
+            app_log_text_box.configure(text = "YOU'RE OFFLINE OR THIS DNS IS NOT AVAILABLE FOR YOUR ISP!")
         elif app_language == "persian":
             app_log_text_box.configure(text = "!با اینترنت شما قابل دسترسی نمی باشد DNS این")
 
     elif OS == 'Windows' and ignoreflag == False:
-        if is_connected_to_network():
-            process = subprocess.Popen(f'netsh interface ip set dns "WI-FI" static {TemporaryDNS[0]}', creationflags=subprocess.CREATE_NO_WINDOW)
+        if status:
+            process = subprocess.Popen(f'netsh interface ip set dns "{currently_connected_network_adapter}" static {TemporaryDNS[0]}', creationflags=subprocess.CREATE_NO_WINDOW)
             process.wait()
             output = subprocess.getstatusoutput("ping -n 1 " + f"{TemporaryDNS[0]}")[1]
+
             if app_language == "english":
                 app_log_text_box.configure(text = "TEMPORARY DNS ACTIVATED!\n DNS1 PING = " + output.split('Average =')[1])
             if app_language == "persian":
@@ -280,14 +377,6 @@ def Test_DNS(custom_url_flag = False, url = ""):
             response = make_request(url)
             return CIP(response)
 
-
-def is_connected_to_network():
-    status = subprocess.getstatusoutput("ping -n 1 8.8.8.8")
-    if status[0] == 0 and not status[1].__contains__("unreachable"):
-        return True
-    return False
-
-
 def Test_All():
     checkmark_img_data = Image.open("Images/Checkmark.png")
     checkmark_img = CTkImage(dark_image=checkmark_img_data,
@@ -305,41 +394,41 @@ def Test_All():
     Previous = get_dns_servers()
 
     if OS == "Windows":
-        flag = is_connected_to_network()
+        flag = status
 
     if OS == 'Windows' and flag:
-        process = subprocess.Popen(f'netsh interface ip set dns "WI-FI" static {SpotifyDNS[0]}', creationflags=subprocess.CREATE_NO_WINDOW)
+        process = subprocess.Popen(f'netsh interface ip set dns "{currently_connected_network_adapter}" static {SpotifyDNS[0]}', creationflags=subprocess.CREATE_NO_WINDOW)
         process.wait()
         SDNS = Test_DNS()
 
     if OS == 'Windows' and flag:
-        process = subprocess.Popen(f'netsh interface ip set dns "WI-FI" static {AntiDNS[0]}', creationflags=subprocess.CREATE_NO_WINDOW)
+        process = subprocess.Popen(f'netsh interface ip set dns "{currently_connected_network_adapter}" static {AntiDNS[0]}', creationflags=subprocess.CREATE_NO_WINDOW)
         process.wait()
-        process = subprocess.Popen(f'netsh interface ip add dns "WI-FI" {AntiDNS[1]} index = 2', creationflags=subprocess.CREATE_NO_WINDOW)
+        process = subprocess.Popen(f'netsh interface ip add dns "{currently_connected_network_adapter}" {AntiDNS[1]} index = 2', creationflags=subprocess.CREATE_NO_WINDOW)
         process.wait()
         ADNS = Test_DNS()
 
 
     if ignoreflag != True and OS == 'Windows':
-        process = subprocess.Popen(f'netsh interface ip set dns "WI-FI" static {TemporaryDNS[0]}', creationflags=subprocess.CREATE_NO_WINDOW)
+        process = subprocess.Popen(f'netsh interface ip set dns "{currently_connected_network_adapter}" static {TemporaryDNS[0]}', creationflags=subprocess.CREATE_NO_WINDOW)
         process.wait()
         TDNS = Test_DNS()
 
     if len(Previous) == 0:
-        if OS == "Windows" and flag:
-            process = subprocess.Popen('netsh interface ip set dnsservers name="Wi-Fi" source=dhcp', creationflags=subprocess.CREATE_NO_WINDOW)
+        if OS == "Windows" and status:
+            process = subprocess.Popen('netsh interface ip set dnsservers "{currently_connected_network_adapter}" source=dhcp', creationflags=subprocess.CREATE_NO_WINDOW)
 
     if len(Previous) >= 1:
-        if OS == "Windows" and flag:
-            process = subprocess.Popen(f'netsh interface ip set dns "WI-FI" static {Previous[0]}', creationflags=subprocess.CREATE_NO_WINDOW)
+        if OS == "Windows" and status:
+            process = subprocess.Popen(f'netsh interface ip set dns "{currently_connected_network_adapter}" static {Previous[0]}', creationflags=subprocess.CREATE_NO_WINDOW)
             process.wait()
 
     if len(Previous) == 2:
-        if OS == "Windows" and flag:
-            process = subprocess.Popen(f'netsh interface ip add dns "WI-FI" {Previous[1]} index = 2', creationflags=subprocess.CREATE_NO_WINDOW)
+        if OS == "Windows" and status:
+            process = subprocess.Popen(f'netsh interface ip add dns "{currently_connected_network_adapter}" {Previous[1]} index = 2', creationflags=subprocess.CREATE_NO_WINDOW)
             process.wait()
 
-    if OS == "Windows" and flag:
+    if OS == "Windows" and status:
         if SDNS[0] == True:
             d1s1.configure(image = checkmark_img)
         if SDNS[1] == True:
@@ -456,7 +545,6 @@ def get_app_settings():
     terms = configure.get("Settings", "Terms")
     return theme, language, terms
 
-
 def create_new_ini_file(path):
     open(path, 'x')
     configure = ConfigParser()
@@ -473,26 +561,30 @@ def create_new_ini_file(path):
 def load_actual_application_async():
     # Create a method that load the main page of the application to run on another thread
     def load_widgets():
-        before = time.time()
-        download_file(url)
-        aafter = time.time()
-        global flag
-        if flag != True:
-            if (aafter - before) < 3:
-                time.sleep(3 - (aafter - before))
-            global TemporaryDNS
-            configur = ConfigParser()
-            configur.read("Configurations.ini")
-            try:
-                TemporaryDNS[0]= configur.get("Temporary", "address1")
-                TemporaryDNS[1]= configur.get("Temporary", "address2")
-            except configparser.NoSectionError:
-                TemporaryDNS[0]= configur.get("Temporary", "address1")
-                TemporaryDNS[1]= configur.get("Temporary", "address2")
-            CheckDNS()
+        global ignoreflag
+        if status:
+            before = time.time()
+            download_file(url)
+            aafter = time.time()
+            global flag
+            if flag != True:
+                if (aafter - before) < 3.0:
+                    time.sleep(3 - (aafter - before))
+                global TemporaryDNS
+                configur = ConfigParser()
+                configur.read("Configurations.ini")
+                try:
+                    TemporaryDNS[0]= configur.get("Temporary", "address1")
+                    TemporaryDNS[1]= configur.get("Temporary", "address2")
+                except configparser.NoSectionError:
+                    TemporaryDNS[0]= configur.get("Temporary", "address1")
+                    TemporaryDNS[1]= configur.get("Temporary", "address2")
+                CheckDNS()
+            else:
+                ignoreflag = True
         else:
-            global ignoreflag
             ignoreflag = True
+            time.sleep(3.0)
 
         global app_main_label_animated_gif
         global animated_gif
@@ -620,12 +712,10 @@ def start_custom_url_test():
             anti_pro_custom_url_success_flag.configure(image = red_cross_img)
             temp_dns_custom_url_success_flag.configure(image = red_cross_img)
 
-            if OS == "Windows":
-                flag = is_connected_to_network()
 
             Previous = get_dns_servers()
-            if OS == "Windows" and flag:
-                process = subprocess.Popen(f'netsh interface ip set dns "WI-FI" static {SpotifyDNS[0]}', creationflags=subprocess.CREATE_NO_WINDOW)
+            if OS == "Windows" and status:
+                process = subprocess.Popen(f'netsh interface ip set dns "{currently_connected_network_adapter}" static {SpotifyDNS[0]}', creationflags=subprocess.CREATE_NO_WINDOW)
                 process.wait()
                 SDNS = Test_DNS(True, url= custom_url_text_box.get())
             
@@ -636,10 +726,10 @@ def start_custom_url_test():
                 time.sleep(3)
                 SDNS = Test_DNS(True, url= custom_url_text_box.get())
             
-            if OS == 'Windows' and flag:
-                process = subprocess.Popen(f'netsh interface ip set dns "WI-FI" static {AntiDNS[0]}', creationflags=subprocess.CREATE_NO_WINDOW)
+            if OS == 'Windows' and status:
+                process = subprocess.Popen(f'netsh interface ip set dns "{currently_connected_network_adapter}" static {AntiDNS[0]}', creationflags=subprocess.CREATE_NO_WINDOW)
                 process.wait()
-                process = subprocess.Popen(f'netsh interface ip add dns "WI-FI" {AntiDNS[1]} index = 2', creationflags=subprocess.CREATE_NO_WINDOW)
+                process = subprocess.Popen(f'netsh interface ip add dns "{currently_connected_network_adapter}" {AntiDNS[1]} index = 2', creationflags=subprocess.CREATE_NO_WINDOW)
                 process.wait()
                 ADNS = Test_DNS(True, url= custom_url_text_box.get())
 
@@ -651,7 +741,7 @@ def start_custom_url_test():
                 ADNS = Test_DNS(True, url= custom_url_text_box.get())
 
             if ignoreflag != True and OS == "Windows":
-                process = subprocess.Popen(f'netsh interface ip set dns "WI-FI" static {TemporaryDNS[0]}', creationflags=subprocess.CREATE_NO_WINDOW)
+                process = subprocess.Popen(f'netsh interface ip set dns "{currently_connected_network_adapter}" static {TemporaryDNS[0]}', creationflags=subprocess.CREATE_NO_WINDOW)
                 process.wait()
                 TDNS = Test_DNS(True, url= custom_url_text_box.get())
 
@@ -668,19 +758,19 @@ def start_custom_url_test():
             elif OS == "Windows":
                 TDNS = False
             if len(Previous) == 0:
-                if OS == "Windows" and flag:
-                    process = subprocess.Popen('netsh interface ip set dnsservers name="Wi-Fi" source=dhcp', creationflags=subprocess.CREATE_NO_WINDOW)
+                if OS == "Windows" and status:
+                    process = subprocess.Popen('netsh interface ip set dnsservers "{currently_connected_network_adapter}" source=dhcp', creationflags=subprocess.CREATE_NO_WINDOW)
                 elif OS == "Linux":
                     subprocess.run(["sudo","nmcli", 'connection', 'modify', connected_network(), 'ipv4.dns', '8.8.8.8 8.8.4.4'])
             if len(Previous) >= 1:
-                if OS == "Windows" and flag:
-                    process = subprocess.Popen(f'netsh interface ip set dns "WI-FI" static {Previous[0]}', creationflags=subprocess.CREATE_NO_WINDOW)
+                if OS == "Windows" and status:
+                    process = subprocess.Popen(f'netsh interface ip set dns "{currently_connected_network_adapter}" static {Previous[0]}', creationflags=subprocess.CREATE_NO_WINDOW)
                     process.wait()
                 elif OS == "Linux" and len(Previous) == 1:
                     subprocess.run(["sudo","nmcli", 'connection', 'modify', connected_network(), 'ipv4.dns', f'{Previous[0]}'])
             if len(Previous) == 2:
-                if OS == "Windows" and flag:
-                    process = subprocess.Popen(f'netsh interface ip add dns "WI-FI" {Previous[1]} index = 2', creationflags=subprocess.CREATE_NO_WINDOW)
+                if OS == "Windows" and status:
+                    process = subprocess.Popen(f'netsh interface ip add dns "{currently_connected_network_adapter}" {Previous[1]} index = 2', creationflags=subprocess.CREATE_NO_WINDOW)
                     process.wait()
                 elif OS == "Linux":
                     subprocess.run(["sudo","nmcli", 'connection', 'modify', connected_network(), 'ipv4.dns', f'{Previous[0]} {Previous[1]}'])
@@ -688,7 +778,7 @@ def start_custom_url_test():
                 subprocess.getstatusoutput("sudo nmcli networking off")
                 subprocess.getstatusoutput("sudo nmcli networking on")
 
-            if OS == "Windows" and flag or OS == "Linux":
+            if OS == "Windows" and status or OS == "Linux":
                 if SDNS:
                     spotify_custom_url_success_flag.configure(image = checkmark_img)
                 if ADNS:
@@ -1049,6 +1139,9 @@ def set_app_language(language, write_to_file=False):
         actual_apply_custom_dns_btn.configure(text="اعمال دی ان اس", font=("Arial Bold", 16))
 
         get_custom_dns_ping_btn.configure(text="گرفتن تاخیر", font=("Arial Bold", 16))
+        save_dns.configure(text="DNS ذخیره", font=("Arial Bold", 16))
+        option_menu.configure(font=("Arial Bold", 16))
+        chosen_option.set("انتخاب کنید")
 
         # </editor-fold>
 
@@ -1269,6 +1362,10 @@ def set_app_language(language, write_to_file=False):
         actual_apply_custom_dns_btn.configure(text="Apply DNS", font=("Arial", 14))
 
         get_custom_dns_ping_btn.configure(text="Get ping", font=("Arial", 14))
+
+        option_menu.configure(font=("Arial", 14))
+        chosen_option.set("Select A DNS")
+        save_dns.configure(text="Save DNS", font=("Arial", 14))
 
         # </editor-fold>
 
@@ -1710,6 +1807,18 @@ settings_btn = CTkButton(master=small_buttons_frame, height=50, width=50, image=
                          corner_radius=20, text="", command=go_to_settings,
                          fg_color="transparent", hover_color=icon_button_hover_color)
 settings_btn.grid(row=0, column=0, sticky=E, padx=20, pady=20)
+
+# App Status
+if status == True:
+    status_label_text = "Online"
+    status_label_text_color = "#00896f"
+else:
+    status_label_text = "Offline"
+    status_label_text_color = "#c34a36"
+
+status_label = CTkLabel(master=small_buttons_frame, text=status_label_text, font=("Arial Narrow", 24), fg_color="transparent", text_color=status_label_text_color)
+status_label.grid(row=0, column=0, padx=20, pady=20)
+
 
 # small_buttons_frame.grid(row=0, column=0, sticky=W+E)
 
@@ -2446,7 +2555,7 @@ preferred_dns_label_frame.grid(row=1, column=0, padx=10, pady=(20, 0), sticky=W)
 
 preferred_dns_text = StringVar()
 preferred_dns_text_box = CTkEntry(master=apply_custom_dns_frame, height=40,
-                                  textvariable=preferred_dns_text)
+                                  textvariable=preferred_dns_text, font=("Arial", 14))
 preferred_dns_text_box.grid(row=2, column=0, sticky=W+E, padx=10)
 
 alternate_dns_label = CTkLabel(master=apply_custom_dns_frame,
@@ -2456,7 +2565,7 @@ alternate_dns_label.grid(row=3, column=0, padx=10, sticky=W, pady=(20, 0))
 
 alternate_dns_text = StringVar()
 alternate_dns_text_box = CTkEntry(master=apply_custom_dns_frame, height=40,
-                                  textvariable=alternate_dns_text)
+                                  textvariable=alternate_dns_text, font=("Arial", 14))
 alternate_dns_text_box.grid(row=4, column=0, sticky=W+E, padx=10)
 
 acd_buttons_frame = CTkFrame(master=apply_custom_dns_frame, fg_color="transparent", corner_radius=0)
@@ -2484,6 +2593,42 @@ get_custom_dns_ping_btn.grid(row=0, column=1, sticky=W + E, padx=10)
 acd_buttons_frame.grid(row=5, column=0, pady=(50, 0))
 
 apply_custom_dns_frame.rowconfigure(6, weight=1)
+
+# The button to save the custom DNS
+save_dns = CTkButton(master=acd_buttons_frame, text="Save Custom DNS",font=("Arial", 14),
+                                    fg_color="#F3D300",
+                                    hover_color="#796900",
+                                    text_color="#242424",
+                                    command=lambda: [save_custom_dns(preferred_dns_text_box.get(),
+                                                                              alternate_dns_text_box.get()), get_custom_dns()])
+
+save_dns.grid(row=1, column=0, sticky=W + E, padx=10, pady = 20)
+
+# The option menu so user can choose which DNS they want
+chosen_option = StringVar()
+fontt = None
+if app_language == "persian":
+    chosen_option.set("انتخاب کنید")
+    fontt = ("Arial Bold", 14)
+else:
+    chosen_option.set("Select a DNS")
+    fontt = ("Arial", 14)
+
+option_menu = CTkOptionMenu(master=acd_buttons_frame,font=fontt,
+                                    fg_color="#F3D300",
+                                    text_color="#242424",
+                                    values=items_list,
+                                    button_color="#F3D300",
+                                    button_hover_color="#796900",
+                                    variable=chosen_option,
+                                    anchor=CENTER,
+                                    dropdown_fg_color="#CCB204",
+                                    dropdown_hover_color="#796900",
+                                    dropdown_text_color="#242424",
+                                    dropdown_font=("Arial", 14),
+                                    command=call_back)
+
+option_menu.grid(row=1, column=1, sticky=W + E, padx=10, pady = 20)
 
 
 custom_log_frame = CTkFrame(master=apply_custom_dns_frame, fg_color="transparent")
